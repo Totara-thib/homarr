@@ -8,17 +8,16 @@ import { IconPencil, IconPhotoEdit, IconPhotoX } from "@tabler/icons-react";
 import type { RouterOutputs } from "@homarr/api";
 import { clientApi } from "@homarr/api/client";
 import { revalidatePathActionAsync } from "@homarr/common/client";
-import { useConfirmModal } from "@homarr/modals";
 import { showErrorNotification, showSuccessNotification } from "@homarr/notifications";
 import { useI18n } from "@homarr/translation/client";
-import { UserAvatar } from "@homarr/ui";
+import { InlineConfirmMenuItem, UserAvatar } from "@homarr/ui";
 
 interface UserProfileAvatarForm {
   user: RouterOutputs["user"]["getById"];
 }
 
 export const UserProfileAvatarForm = ({ user }: UserProfileAvatarForm) => {
-  const { mutate } = clientApi.user.setProfileImage.useMutation({
+  const { mutate, mutateAsync, isPending } = clientApi.user.setProfileImage.useMutation({
     async onSuccess() {
       // Revalidate all as the avatar is used in multiple places
       await revalidatePathActionAsync("/");
@@ -26,7 +25,6 @@ export const UserProfileAvatarForm = ({ user }: UserProfileAvatarForm) => {
   });
   const [opened, { toggle }] = useDisclosure(false);
   const isMobile = useMediaQuery("(max-width: 48em)");
-  const { openConfirmModal } = useConfirmModal();
   const tCommon = useI18n("common");
   const tManageAvatar = useI18n("user.action.manageAvatar");
 
@@ -67,32 +65,28 @@ export const UserProfileAvatarForm = ({ user }: UserProfileAvatarForm) => {
     [mutate, user.id, tManageAvatar],
   );
 
-  const handleRemoveAvatar = useCallback(() => {
-    openConfirmModal({
-      title: tManageAvatar("removeImage.label"),
-      children: tManageAvatar("removeImage.confirm"),
-      onConfirm() {
-        mutate(
-          {
-            userId: user.id,
-            image: null,
+  const handleRemoveAvatar = useCallback(
+    () =>
+      mutateAsync(
+        {
+          userId: user.id,
+          image: null,
+        },
+        {
+          onSuccess() {
+            showSuccessNotification({
+              message: tManageAvatar("removeImage.notification.success.message"),
+            });
           },
-          {
-            onSuccess() {
-              showSuccessNotification({
-                message: tManageAvatar("removeImage.notification.success.message"),
-              });
-            },
-            onError() {
-              showErrorNotification({
-                message: tManageAvatar("removeImage.notification.error.message"),
-              });
-            },
+          onError() {
+            showErrorNotification({
+              message: tManageAvatar("removeImage.notification.error.message"),
+            });
           },
-        );
-      },
-    });
-  }, [mutate, user.id, openConfirmModal, tManageAvatar]);
+        },
+      ),
+    [mutateAsync, user.id, tManageAvatar],
+  );
 
   return (
     <Box pos="relative" display="flex" style={{ justifyContent: isMobile ? "center" : undefined }}>
@@ -123,9 +117,14 @@ export const UserProfileAvatarForm = ({ user }: UserProfileAvatarForm) => {
             )}
           </FileButton>
           {user.image && (
-            <Menu.Item onClick={handleRemoveAvatar} leftSection={<IconPhotoX size={16} stroke={1.5} />}>
+            <InlineConfirmMenuItem
+              onConfirm={handleRemoveAvatar}
+              confirmLabel={tCommon("action.confirm")}
+              disabled={isPending}
+              leftSection={<IconPhotoX size={16} stroke={1.5} />}
+            >
               {tManageAvatar("removeImage.label")}
-            </Menu.Item>
+            </InlineConfirmMenuItem>
           )}
         </Menu.Dropdown>
       </Menu>

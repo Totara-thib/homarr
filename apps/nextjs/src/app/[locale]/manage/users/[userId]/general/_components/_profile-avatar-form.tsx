@@ -118,6 +118,7 @@ export const UserProfileAvatarForm = ({ user }: UserProfileAvatarForm) => {
           </FileButton>
           {user.image && (
             <InlineConfirmMenuItem
+              color="red"
               onConfirm={handleRemoveAvatar}
               confirmLabel={tCommon("action.confirm")}
               disabled={isPending}
